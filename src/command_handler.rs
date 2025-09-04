@@ -1,6 +1,7 @@
 use async_trait::async_trait;
+use uuid::Uuid;
 
-use crate::{Aggregate, Command, EventStore};
+use crate::{Aggregate, Command, EventEnvelope, EventMetadata, EventStore};
 
 pub trait CommandHandlerError {
     fn from_event_store_error<E>(err: E) -> Self;
@@ -19,22 +20,33 @@ pub trait CommandHandler<C: Command> {
     where
         C: 'static,
     {
-        let events = self
+        let event_envelopes = self
             .event_store()
             .get_events(command.aggregate_id())
             .await
             .map_err(Self::Error::from_event_store_error)?;
 
         let mut aggregate = C::Aggregate::default();
-        for event in events {
-            aggregate.apply(event);
+        for envelope in event_envelopes {
+            aggregate.apply(envelope.event);
         }
 
         let new_events = command.execute(&aggregate).map_err(Self::Error::from_command_error)?;
 
         if !new_events.is_empty() {
+            let correlation_id = Uuid::new_v4();
+            let envelopes: Vec<_> = new_events
+                .into_iter()
+                .map(|event| {
+                    EventEnvelope {
+                        event,
+                        metadata: EventMetadata::new(correlation_id, None),
+                    }
+                })
+                .collect();
+
             self.event_store()
-                .save_events(command.aggregate_id(), new_events, aggregate.version())
+                .save_events(command.aggregate_id(), envelopes, aggregate.version())
                 .await
                 .map_err(Self::Error::from_event_store_error)?;
         }
