@@ -1,0 +1,3 @@
+#!/bin/sh
+
+cargo bin commitlint -e "$1"

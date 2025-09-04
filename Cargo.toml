@@ -1,0 +1,14 @@
+[package]
+name = "cqrs-framework"
+version = "0.1.0"
+edition = "2024"
+license-file = "LICENSE"
+
+[dependencies]
+
+[dev-dependencies]
+cargo-run-bin = { version = "1.7.5", default-features = false }
+husky-rs = "0.1.5"
+
+[package.metadata.bin]
+commitlint-rs = { version = "0.2.3", bins = ["commitlint"] }

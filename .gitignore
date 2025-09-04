@@ -1,0 +1,6 @@
+# Ides
+.idea
+
+# Build
+/target
+/.bin
