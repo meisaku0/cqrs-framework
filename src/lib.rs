@@ -4,6 +4,7 @@ pub mod command_bus;
 pub mod command_handler;
 pub mod event;
 pub mod event_store;
+pub mod query;
 
 pub use aggregate::Aggregate;
 pub use command::Command;
@@ -11,3 +12,4 @@ pub use command_bus::{CommandBus, InMemoryCommandBus};
 pub use command_handler::{CommandHandler, CommandHandlerError};
 pub use event::Event;
 pub use event_store::EventStore;
+pub use query::Query;
