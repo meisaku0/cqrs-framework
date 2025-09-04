@@ -1,12 +1,11 @@
-use crate::{Aggregate, Event};
+use crate::Aggregate;
 
 pub trait Command: Send + Sync {
     type Aggregate: Aggregate;
-    type AggregateId;
     type Error;
-    type Event: Event;
+    type AggregateId;
 
     fn aggregate_id(&self) -> &Self::AggregateId;
 
-    fn execute(&self, aggregate: &Self::Aggregate) -> Result<Vec<Self::Event>, Self::Error>;
+    fn execute(&self, aggregate: &Self::Aggregate) -> Result<Vec<<Self::Aggregate as Aggregate>::Event>, Self::Error>;
 }
