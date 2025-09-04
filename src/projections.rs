@@ -5,5 +5,5 @@ pub trait Projection: Send + Sync {
     type Event;
     type Error;
 
-    async fn apply(&mut self, event: &Self::Event) -> Result<(), Self::Error>;
+    async fn apply(&self, event: &Self::Event) -> Result<(), Self::Error>;
 }
