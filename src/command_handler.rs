@@ -1,6 +1,7 @@
 use async_trait::async_trait;
+use uuid::Uuid;
 
-use crate::{Aggregate, Command, EventEnvelope, EventMetadata, EventStore, SnapshotStore};
+use crate::{Aggregate, Command, EventBus, EventEnvelope, EventMetadata, EventStore, SnapshotStore};
 
 pub trait CommandHandlerError {
     fn from_event_store_error<E>(err: E) -> Self;
@@ -11,10 +12,12 @@ pub trait CommandHandlerError {
 pub trait CommandHandler<C: Command> {
     type EventStore: EventStore<<C::Aggregate as Aggregate>::Event, C::AggregateId>;
     type SnapshotStore: SnapshotStore<C::Aggregate, C::AggregateId>;
+    type EventBus: EventBus<<C::Aggregate as Aggregate>::Event>;
     type Error: CommandHandlerError;
 
     fn event_store(&self) -> &Self::EventStore;
     fn snapshot_store(&self) -> &Self::SnapshotStore;
+    fn event_bus(&self) -> &Self::EventBus;
 
     async fn handle(&self, command: C) -> Result<(), Self::Error>
     where
@@ -43,7 +46,7 @@ pub trait CommandHandler<C: Command> {
         let new_events = command.execute(&aggregate).map_err(Self::Error::from_command_error)?;
 
         if !new_events.is_empty() {
-            let correlation_id = uuid::Uuid::new_v4();
+            let correlation_id = Uuid::new_v4();
             let envelopes: Vec<_> = new_events
                 .into_iter()
                 .map(|event| {
@@ -57,9 +60,11 @@ pub trait CommandHandler<C: Command> {
             let envelope_count = envelopes.len() as u64;
 
             self.event_store()
-                .save_events(command.aggregate_id(), envelopes, aggregate.version())
+                .save_events(command.aggregate_id(), envelopes.clone(), aggregate.version())
                 .await
                 .map_err(Self::Error::from_event_store_error)?;
+
+            self.event_bus().publish(&envelopes).await.ok();
 
             if (aggregate.version() + envelope_count) % 10 == 0 {
                 self.snapshot_store()
