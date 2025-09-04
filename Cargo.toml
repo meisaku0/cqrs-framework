@@ -5,6 +5,7 @@ edition = "2024"
 license-file = "LICENSE"
 
 [dependencies]
+async-trait = "0.1.89"
 
 [dev-dependencies]
 cargo-run-bin = { version = "1.7.5", default-features = false }
