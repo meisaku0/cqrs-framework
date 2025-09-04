@@ -5,6 +5,7 @@ pub mod command_handler;
 pub mod event;
 pub mod event_store;
 pub mod query;
+pub mod query_handler;
 
 pub use aggregate::Aggregate;
 pub use command::Command;
@@ -13,3 +14,4 @@ pub use command_handler::{CommandHandler, CommandHandlerError};
 pub use event::Event;
 pub use event_store::EventStore;
 pub use query::Query;
+pub use query_handler::QueryHandler;
