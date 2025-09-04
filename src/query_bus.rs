@@ -68,6 +68,8 @@ impl InMemoryQueryBus {
         Q: Query + 'static,
         H: QueryHandler<Q> + Send + Sync + 'static,
     {
+        log::info!("Registering query handler for: {}", std::any::type_name::<Q>());
+
         let wrapped = TypedQueryHandler::new(handler);
         self.handlers.insert(TypeId::of::<Q>(), Box::new(wrapped));
     }

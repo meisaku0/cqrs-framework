@@ -66,6 +66,8 @@ impl InMemoryCommandBus {
         C: Command + 'static,
         H: CommandHandler<C> + Send + Sync + 'static,
     {
+        log::info!("Registering command handler for: {}", std::any::type_name::<C>());
+
         let wrapped = TypedCommandHandler::new(handler);
         self.handlers.insert(TypeId::of::<C>(), Box::new(wrapped));
     }

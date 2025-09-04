@@ -23,6 +23,8 @@ pub trait CommandHandler<C: Command> {
     where
         C: 'static,
     {
+        log::info!("Processing command: {}", std::any::type_name::<C>());
+
         let snapshot = self
             .snapshot_store()
             .get_snapshot(command.aggregate_id())
@@ -33,11 +35,15 @@ pub trait CommandHandler<C: Command> {
         let mut aggregate = snapshot.unwrap_or_default();
         let from_version = aggregate.version();
 
+        log::debug!("Loaded aggregate from version: {}", from_version);
+
         let events = self
             .event_store()
             .get_events_from_version(command.aggregate_id(), from_version)
             .await
             .map_err(Self::Error::from_event_store_error)?;
+
+        log::debug!("Loaded {} events from event store", events.len());
 
         for envelope in events {
             aggregate.apply(envelope.event);
@@ -46,10 +52,14 @@ pub trait CommandHandler<C: Command> {
         let new_events = command.execute(&aggregate).map_err(Self::Error::from_command_error)?;
 
         if !new_events.is_empty() {
+            log::info!("Generated {} new events", new_events.len());
+
             let correlation_id = Uuid::new_v4();
             let envelopes: Vec<_> = new_events
                 .into_iter()
                 .map(|event| {
+                    log::debug!("Created event envelope: {}", std::any::type_name_of_val(&event));
+
                     EventEnvelope {
                         event,
                         metadata: EventMetadata::new(correlation_id, None),
@@ -64,14 +74,25 @@ pub trait CommandHandler<C: Command> {
                 .await
                 .map_err(Self::Error::from_event_store_error)?;
 
+            log::info!("Saved events to event store");
+
             self.event_bus().publish(&envelopes).await.ok();
 
+            log::info!("Published events to event bus");
+
             if (aggregate.version() + envelope_count) % 10 == 0 {
+                log::info!(
+                    "Creating snapshot at version {}",
+                    aggregate.version() + envelopes.len() as u64
+                );
+
                 self.snapshot_store()
                     .save_snapshot(command.aggregate_id(), aggregate)
                     .await
                     .ok();
             }
+        } else {
+            log::debug!("No events generated");
         }
 
         Ok(())

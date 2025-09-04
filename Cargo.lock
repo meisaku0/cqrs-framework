@@ -148,6 +148,7 @@ dependencies = [
  "cargo-run-bin",
  "chrono",
  "husky-rs",
+ "log",
  "tokio",
  "uuid",
 ]

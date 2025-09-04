@@ -26,6 +26,15 @@ impl<E: Event, P: Projection<Event = E> + Send + Sync> EventHandler<E> for Proje
     type Error = P::Error;
 
     async fn handle(&self, envelope: &EventEnvelope<E>) -> Result<(), Self::Error> {
-        self.projection.apply(&envelope.event).await
+        log::debug!("Applying event to projection: {}", envelope.event.event_type());
+
+        let result = self.projection.apply(&envelope.event).await;
+
+        if result.is_ok() {
+            log::debug!("Event applied successfully to projection");
+        } else {
+            log::warn!("Failed to apply event to projection");
+        }
+        result
     }
 }

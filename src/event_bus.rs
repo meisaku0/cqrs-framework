@@ -45,15 +45,26 @@ impl<E: Event> EventBus<E> for InMemoryEventBus<E> {
     type Error = Box<dyn std::error::Error + Send + Sync>;
 
     async fn publish(&self, events: &[EventEnvelope<E>]) -> Result<(), Self::Error> {
+        log::info!("Publishing {} events to {} handlers", events.len(), self.handlers.len());
+
         for event in events {
-            for handler in &self.handlers {
+            log::debug!("Processing event: {}", event.event.event_type());
+
+            for (i, handler) in self.handlers.iter().enumerate() {
+                log::debug!("Calling handler {}", i);
+
                 handler.handle(event).await?;
             }
         }
+
+        log::debug!("All events published successfully");
+
         Ok(())
     }
 
     fn subscribe<H: EventHandler<E> + Send + Sync + 'static>(&mut self, handler: H) {
+        log::info!("Registering new event handler (total: {})", self.handlers.len() + 1);
+
         self.handlers.push(Box::new(handler));
     }
 }
