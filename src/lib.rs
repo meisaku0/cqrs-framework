@@ -10,6 +10,7 @@ pub mod projections;
 pub mod query;
 pub mod query_bus;
 pub mod query_handler;
+pub mod snapshot;
 
 pub use aggregate::Aggregate;
 pub use command::Command;
@@ -23,3 +24,4 @@ pub use projections::Projection;
 pub use query::Query;
 pub use query_bus::{InMemoryQueryBus, QueryBus};
 pub use query_handler::QueryHandler;
+pub use snapshot::{Snapshot, SnapshotStore};
