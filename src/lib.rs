@@ -7,6 +7,7 @@ pub mod event_bus;
 pub mod event_handler;
 pub mod event_metadata;
 pub mod event_store;
+pub mod event_store_postgres;
 pub mod projections;
 pub mod query;
 pub mod query_bus;
@@ -22,8 +23,24 @@ pub use event_bus::{EventBus, InMemoryEventBus};
 pub use event_handler::{EventHandler, ProjectionEventHandler};
 pub use event_metadata::{EventEnvelope, EventMetadata};
 pub use event_store::EventStore;
+pub use event_store_postgres::{Migrator, PostgresEventStore};
 pub use projections::Projection;
 pub use query::Query;
 pub use query_bus::{InMemoryQueryBus, QueryBus};
 pub use query_handler::QueryHandler;
 pub use snapshot::{Snapshot, SnapshotStore};
+
+#[derive(Debug)]
+pub enum FrameworkError {
+    EventStore(Box<dyn std::error::Error + Send + Sync>),
+    Migration(Box<dyn std::error::Error + Send + Sync>),
+}
+
+pub struct Framework<E: Event> {
+    event_store: Box<dyn EventStore<E, String, Error = FrameworkError> + Send + Sync>,
+    migrator: Box<dyn Migrator + Send + Sync>,
+}
+
+impl<E: Event> Framework<E> {
+    pub async fn setup(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> { self.migrator.migrate().await }
+}
