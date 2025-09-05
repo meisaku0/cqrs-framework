@@ -37,7 +37,7 @@ pub enum FrameworkError {
 }
 
 pub struct Framework<E: Event> {
-    event_store: Box<dyn EventStore<E, String, Error = FrameworkError> + Send + Sync>,
+    pub event_store: Box<dyn EventStore<E, String, Error = FrameworkError> + Send + Sync>,
     migrator: Box<dyn Migrator + Send + Sync>,
 }
 

@@ -4,8 +4,9 @@ use sqlx::{PgPool, Row};
 
 use crate::{Event, EventEnvelope, EventMetadata, EventStore};
 
+#[derive(Clone)]
 pub struct PostgresEventStore {
-    pool: PgPool,
+    pub(crate) pool: PgPool,
 }
 
 #[derive(Debug)]
@@ -42,11 +43,10 @@ impl<E: Event + Serialize + for<'de> Deserialize<'de> + Send + Sync + 'static> E
     ) -> Result<(), Self::Error> {
         let mut tx = self.pool.begin().await?;
 
-        // Check current version
         let current_version: Option<i64> =
-            sqlx::query_scalar("SELECT MAX(version) FROM events WHERE aggregate_id = $1")
+            sqlx::query_scalar("SELECT COALESCE(MAX(version), 0) FROM events WHERE aggregate_id = $1")
                 .bind(aggregate_id)
-                .fetch_optional(&mut *tx)
+                .fetch_one(&mut *tx)
                 .await?;
 
         if current_version.unwrap_or(0) != expected_version as i64 {
@@ -128,22 +128,27 @@ pub trait Migrator {
 impl Migrator for PostgresEventStore {
     async fn migrate(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS events (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                aggregate_id TEXT NOT NULL,
-                event_type TEXT NOT NULL,
-                event_data JSONB NOT NULL,
-                metadata JSONB NOT NULL,
-                version BIGINT NOT NULL,
-                created_at TIMESTAMPTZ DEFAULT NOW()
-            );
-            CREATE INDEX IF NOT EXISTS idx_events_aggregate_id ON events(aggregate_id);
-            CREATE INDEX IF NOT EXISTS idx_events_version ON events(aggregate_id, version);
-            "#,
+            "CREATE TABLE IF NOT EXISTS events (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            aggregate_id TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            event_data JSONB NOT NULL,
+            metadata JSONB NOT NULL,
+            version BIGINT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )",
         )
         .execute(&self.pool)
         .await?;
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_events_aggregate_id ON events(aggregate_id)")
+            .execute(&self.pool)
+            .await?;
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_events_version ON events(aggregate_id, version)")
+            .execute(&self.pool)
+            .await?;
+
         Ok(())
     }
 }
