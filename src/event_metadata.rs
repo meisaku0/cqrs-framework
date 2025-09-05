@@ -23,7 +23,7 @@ impl EventMetadata {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventEnvelope<E: Event> {
     pub event: E,
     pub metadata: EventMetadata,
